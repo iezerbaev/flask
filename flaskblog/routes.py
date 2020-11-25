@@ -18,6 +18,7 @@ posts = [
         'date_posted': 'November 4, 2020'
     },
 ]
+
 @app.route('/')
 def index():
     return render_template('index.html', posts=posts)

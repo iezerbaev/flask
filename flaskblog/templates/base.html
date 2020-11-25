@@ -17,13 +17,13 @@
           </button>
           <div class="collapse navbar-collapse" id="navbarToggle">
             <div class="navbar-nav mr-auto">
-              <a class="nav-item nav-link" href={{ url_for('index') }}>Главная</a>
-              <a class="nav-item nav-link" href={{ url_for('about') }}>О нас</a>
+              <a class="nav-item nav-link" href="{{ url_for('index') }}">Главная</a>
+              <a class="nav-item nav-link" href="{{ url_for('about') }}">О нас</a>
             </div>
             <!-- Navbar Right Side -->
             <div class="navbar-nav">
-              <a class="nav-item nav-link" href={{ url_for('login') }}>Войти</a>
-              <a class="nav-item nav-link" href={{ url_for('register') }}>Регистрация</a>
+              <a class="nav-item nav-link" href="{{ url_for('login') }}">Войти</a>
+              <a class="nav-item nav-link" href="{{ url_for('register') }}">Регистрация</a>
             </div>
           </div>
         </div>
