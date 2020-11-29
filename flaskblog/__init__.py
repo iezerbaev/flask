@@ -13,6 +13,11 @@ db = SQLAlchemy(app)
 brycpt = Bcrypt(app)
 migrate = Migrate(app, db)
 login_manager = LoginManager(app)
+login_manager.login_view = 'login' 
+login_manager.login_message = 'Для доступа к данной странице нужно сделать регистрацию или войти в свой аккаунт!'
+login_manager.login_message_category = 'info'
+
+
 
 
 from flaskblog import routes
