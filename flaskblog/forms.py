@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField
+from wtforms import StringField, PasswordField, SubmitField, BooleanField, TextAreaField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, ValidationError
 import email_validator
 from flaskblog.models import User
@@ -52,3 +52,10 @@ class AccountUpdateForm(FlaskForm):
             user = User.query.filter_by(email=email.data).first()
             if user:
                 raise ValidationError('Такой email существует!')
+
+
+
+class PostForm(FlaskForm):
+    title = StringField('Заголовок', validators=[DataRequired()])
+    content = TextAreaField('Контент', validators=[DataRequired()])
+    submit = SubmitField('Создать пост')

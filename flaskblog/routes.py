@@ -2,36 +2,22 @@ import os
 import secrets
 
 from PIL import Image
-from flask import render_template, url_for, redirect, flash, request
+from flask import render_template, url_for, redirect, flash, request, abort
 from flaskblog import app, brycpt, db
-from flaskblog.forms import RegistrationForm, LoginForm, AccountUpdateForm
-from flaskblog.models import User
+from flaskblog.forms import RegistrationForm, LoginForm, AccountUpdateForm, PostForm
+from flaskblog.models import User, Post
 from flask_login import login_user, logout_user, current_user, login_required
 
 
-posts = [
-    {
-        'author': 'Эзербаев Иса',
-        'title': 'Python Dict',
-        'content': 'First post content',
-        'date_posted': 'November 4, 2020'
-    },
-    {
-        'author': 'Эзербаев Иса',
-        'title': 'Python Tuple',
-        'content': 'First post content',
-        'date_posted': 'November 4, 2020'
-    },
-]
-
 @app.route('/')
 def index():
+    posts = Post.query.all()
     return render_template('index.html', posts=posts)
 
 
 @app.route('/about')
 def about():
-    return render_template('about.html')
+    return render_template('about.html', title='О нас')
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -46,7 +32,7 @@ def register():
         db.session.commit()
         flash(f'Аккаунт  создан {form.username.data}! Вы можете войти в свой аккаунт!', 'success')
         return redirect(url_for('login'))
-    return render_template('register.html', form=form)
+    return render_template('register.html', form=form, title='Регистрация')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -62,7 +48,7 @@ def login():
             return redirect(next_page) if next_page else redirect(url_for('index'))
         else:
             flash('Не правильный email или пароль', 'danger')
-    return render_template('login.html', form=form)
+    return render_template('login.html', form=form, title='Войти')
 
 
 @app.route('/logout')
@@ -83,9 +69,11 @@ def save_avatar(avatar):
     return avatar_name
 
 
-@app.route('/account',  methods=['GET', 'POST'])
+
+@app.route('/account/<username>',  methods=['GET', 'POST'])
 @login_required
-def account():
+def account(username):
+    user = User.query.filter_by(username=username).first_or_404()
     form = AccountUpdateForm()
     if form.validate_on_submit():
         if form.avatar.data:
@@ -100,4 +88,55 @@ def account():
         form.username.data = current_user.username
         form.email.data = current_user.email
     avatar = url_for('static', filename='profile_images/' + current_user.avatar)
-    return render_template('account.html', form=form, avatar=avatar)
+    return render_template('account.html', form=form, avatar=avatar, user=user, title='Профиль')
+
+
+
+@app.route('/post/new', methods=['GET', 'POST'])
+@login_required
+def new_post():
+    form = PostForm()
+    if form.validate_on_submit():
+        post = Post(title=form.title.data, content=form.content.data, author=current_user)
+        db.session.add(post)
+        db.session.commit()
+        flash('Пост был создан!', 'success')
+        redirect(url_for('index'))
+    return render_template('create_post.html', form=form, title='Создать пост', legend='Создать пост')
+
+@app.route('/post/<int:post_id>')
+def post(post_id):
+    post = Post.query.get_or_404(post_id)
+    return render_template('post.html', post=post)
+
+
+@app.route('/post/<int:post_id>/update', methods=['GET', 'POST'])
+@login_required
+def update_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author != current_user:
+        abort(403)
+    form = PostForm()
+    if form.validate_on_submit():
+        post.title = form.title.data
+        post.content = form.content.data
+        db.session.commit()
+        flash('Пост был обновлен!', 'success')
+        return redirect(url_for('post', post_id=post.id))
+    elif request.method == 'GET':
+        form.title.data = post.title
+        form.content.data = post.content
+    return render_template('create_post.html', form=form, title='Изменить пост', legend='Изменить пост')
+
+
+
+@app.route('/post/<int:post_id>/delete', methods=['POST'])
+@login_required
+def delete_post(post_id):
+    post = Post.query.get_or_404(post_id)
+    if post.author != current_user:
+        abort(403)
+    db.session.delete(post)
+    db.session.commit()
+    flash('Пост был удален!', 'success')
+    return redirect(url_for('index'))
