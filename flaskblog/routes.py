@@ -3,11 +3,11 @@ import secrets
 
 from PIL import Image
 from flask import render_template, url_for, redirect, flash, request, abort
-from flaskblog import app, brycpt, db
-from flaskblog.forms import RegistrationForm, LoginForm, AccountUpdateForm, PostForm
+from flaskblog import app, bcrypt, db, mail
+from flaskblog.forms import RegistrationForm, LoginForm, AccountUpdateForm, PostForm, RequestResetForm, ResetPasswordForm
 from flaskblog.models import User, Post
 from flask_login import login_user, logout_user, current_user, login_required
-
+from flask_mail import Message
 
 @app.route('/')
 def index():
@@ -27,7 +27,7 @@ def register():
         return redirect(url_for('index'))
     form = RegistrationForm()
     if form.validate_on_submit():
-        hashed_password = brycpt.generate_password_hash(form.password.data).decode('utf-8')
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
         user = User(username=form.username.data, email=form.email.data, password=hashed_password)
         db.session.add(user)
         db.session.commit()
@@ -43,7 +43,7 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(email=form.email.data).first()
-        if user and brycpt.check_password_hash(user.password, form.password.data):
+        if user and bcrypt.check_password_hash(user.password, form.password.data):
             login_user(user, remember=form.remember.data)
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('index'))
@@ -151,3 +151,39 @@ def user_posts(username):
         .order_by(Post.date_posted.desc()).\
         paginate(page=page, per_page=3)
     return render_template('user_posts.html', posts=posts, user=user)
+
+def send_reset_mail(user):
+    token = user.get_reset_token()
+    msg = Message('Сброс пароля', recipients=[user.email])
+    msg.body = f'''Для того чтобы сбросить пароль перейдите по ссылке: 
+    {url_for('reset_token', token=token, _external=True)} 
+    Если вы не отправляли этот запрос, просто проигнорируйте это письмо, и никаких изменений не будет'''
+    mail.send(msg)
+
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_request():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    form = RequestResetForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(email=form.email.data).first()
+        send_reset_mail(user)
+    return render_template('reset_request.html', title='Сброс пароля', form=form)
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_token(token):
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    user = User.verify_token_reset(token)
+    if user is None:
+        flash('Это недействительный или просроченный токен', 'warning')
+        return redirect(url_for('reset_request'))
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        user.password = hashed_password
+        db.session.commit()
+        flash('Ваш пароль был обновлен! Теперь вы можете войти в систему', 'success')
+        return redirect(url_for('login'))
+    return render_template('reset_token.html', title='Сброс пароля', form=form)
