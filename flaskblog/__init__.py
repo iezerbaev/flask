@@ -6,16 +6,10 @@ from flask_login import LoginManager
 from flask_mail import Mail
 
 
+from confing import Config
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'ff27c42a75864f7b443269bde9c3fef9'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///blog.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'email_username'
-app.config['MAIL_DEFAULT_SENDER'] = 'email_username'
-app.config['MAIL_PASSWORD'] = 'email_password'
+app.config.from_object(Config)
 
 mail = Mail(app)
 db = SQLAlchemy(app)
